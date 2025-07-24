@@ -1,3 +1,5 @@
+// ToolList.js
+
 import React, { useState, useEffect } from 'react';
 import { getTools } from './api';
 
@@ -12,6 +14,8 @@ function ToolList({ refreshTrigger }) {
             setError(null);
             try {
                 const response = await getTools();
+                // ここにAPIレスポンスの全体をログ出力
+                console.log("API Response Data (raw):", response.data);
                 setTools(response.data);
             } catch (err) {
                 console.error('工具一覧取得エラー:', err);
@@ -35,33 +39,45 @@ function ToolList({ refreshTrigger }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f2f2f2' }}>
-                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>工具治具ID</th> {/* 表示名 */}
+                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>ID</th>
                             <th style={{ border: '1px solid #ddd', padding: '8px' }}>名称</th>
                             <th style={{ border: '1px solid #ddd', padding: '8px' }}>型番品番</th>
                             <th style={{ border: '1px solid #ddd', padding: '8px' }}>種類</th>
                             <th style={{ border: '1px solid #ddd', padding: '8px' }}>保管場所</th>
                             <th style={{ border: '1px solid #ddd', padding: '8px' }}>状態</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>購入日</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>購入価格</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>推奨交換時期</th>
+                            <th style={{ border: '1px solid #ddd', padding: '8px' }}>備考</th>
                             <th style={{ border: '1px solid #ddd', padding: '8px' }}>画像</th>
                             <th style={{ border: '1px solid #ddd', padding: '8px' }}>QRコード</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {tools.map((tool) => (
-                            <tr key={tool.id}>
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.id}</td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.name}</td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.modelNumber}</td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.type}</td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.storageLocation}</td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.status}</td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
-                                    {tool.imageUrl && <img src={tool.imageUrl} alt={tool.name} style={{ maxWidth: '50px', maxHeight: '50px' }} />}
-                                </td>
-                                <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
-                                    {tool.qr_code_base64 && <img src={`data:image/png;base64,${tool.qr_code_base64}`} alt="QR Code" style={{ width: '50px', height: '50px' }} />}
-                                </td>
-                            </tr>
-                        ))}
+                        {tools.map(tool => {
+                            // ここに各工具オブジェクトのデータをログ出力
+                            console.log("Rendering Tool:", tool);
+                            return (
+                                <tr key={tool.id}>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.id}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.name}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.modelNumber}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.type}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.storageLocation}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.status}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.purchaseDate}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.purchasePrice}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.recommendedReplacement}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{tool.remarks}</td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                                        {tool.imageUrl && <img src={tool.imageUrl} alt={tool.name} style={{ maxWidth: '50px', maxHeight: '50px' }} />}
+                                    </td>
+                                    <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                                        {tool.qr_code_base64 && <img src={`data:image/png;base64,${tool.qr_code_base64}`} alt="QR Code" style={{ width: '50px', height: '50px' }} />}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             )}
