@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createTool } from './api';
+import { createTool } from '../api';
 
 function ToolForm({ onToolRegistered }) {
     const [tool, setTool] = useState({
