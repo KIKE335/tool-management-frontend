@@ -88,41 +88,40 @@ function LendReturnForm() {
         }
     };
 
-    // html5-qrcode のロジックを useEffect で管理
+    // ★html5-qrcode のロジックを useEffect で管理
     useEffect(() => {
-        let currentScannerInstance = html5QrcodeScannerRef.current;
+        let currentScannerInstance = html5QrcodeScannerRef.current; // useRefを使ってインスタンスを管理するよう修正
 
         if (scanning) {
-            // スキャナーを表示する要素がDOMに存在するか確認
             const readerElement = document.getElementById("reader");
             if (!readerElement) {
                 console.error("QR reader element 'reader' not found in DOM. Cannot start scanner.");
                 setError("スキャナーの表示要素が見つかりませんでした。");
-                setScanning(false); // 要素がない場合はスキャンを停止
+                setScanning(false);
                 return;
             }
 
-            // スキャナーインスタンスがまだ作成されていない場合のみ新規作成
             if (!currentScannerInstance) {
                 try {
                     currentScannerInstance = new Html5QrcodeScanner(
-                        "reader", // HTML要素のID
+                        "reader",
                         {
-                            fps: 10, // フレームレート
-                            qrbox: { width: 250, height: 250 }, // スキャンボックスのサイズ
-                            rememberLastUsedCamera: true, // 最後に使ったカメラを記憶
+                            fps: 10,
+                            qrbox: { width: 250, height: 250 },
+                            rememberLastUsedCamera: true,
                             supportedScanFormats: [
                                 Html5QrcodeSupportedFormats.QR_CODE,
                                 Html5QrcodeSupportedFormats.CODE_128,
                                 Html5QrcodeSupportedFormats.CODE_39,
                             ]
                         },
-                        /* verbose= */ false // 詳細ログを非表示
+                        /* verbose= */ false
                     );
-                    html5QrcodeScannerRef.current = currentScannerInstance; // 新しいインスタンスをRefに格納
+                    html5QrcodeScannerRef.current = currentScannerInstance;
                     console.log("New Html5QrcodeScanner instance created and stored in ref.");
                     console.log("Is currentScannerInstance valid?", currentScannerInstance);
                     console.log("Does currentScannerInstance have render method?", typeof currentScannerInstance.render);
+
                 } catch (instantiationError) {
                     console.error("Failed to instantiate Html5QrcodeScanner:", instantiationError);
                     setError("スキャナーの初期化に失敗しました。ブラウザの互換性を確認してください。");
@@ -131,7 +130,7 @@ function LendReturnForm() {
                 }
             }
 
-            // ここで currentScannerInstance が null/undefined の場合は、初期化に失敗したと判断
+            // At this point, currentScannerInstance should be non-null if instantiation was successful.
             if (!currentScannerInstance) {
                 console.error("Html5QrcodeScanner instance is null/undefined after attempted creation.");
                 setError("スキャナーの初期化に失敗しました。");
@@ -147,72 +146,80 @@ function LendReturnForm() {
                 setMessage('QRコードをスキャンしました。');
                 setError('');
                 // スキャン成功後、スキャナーを停止し、リソースを解放
-                if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
-                    html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on success:", err));
+                // html5QrcodeScanner.clear() の代わりに currentScannerInstance.clear() を使う
+                if (currentScannerInstance && currentScannerInstance.isScanning) {
+                    currentScannerInstance.clear().catch(err => console.error("Failed to clear scanner on success:", err));
                 }
             };
 
-            // スキャンエラー時のコールバック関数
+            // スキャンエラー時のコールバック関数 (詳細ログを再有効化)
             const onScanError = (errorMessage) => {
-                // console.warn(`QR Code Scan Error: ${errorMessage}`);
-                // カメラの読み取りエラー（例: カメラが使用中、権限拒否）の場合のみエラーメッセージを表示し、スキャンを停止
-                if (errorMessage.includes("NotReadableError") || errorMessage.includes("permission denied")) {
-                    setError('カメラの起動に失敗しました。他のアプリがカメラを使用していないか確認してください。');
-                    setScanning(false); // 重大なエラーの場合はスキャンを停止
+                console.error(`QR Code Scan Error: ${errorMessage}`); // ★変更: console.error に変更して必ずログに出す
+                // エラータイプによってはユーザーに通知することも可能
+                if (errorMessage.includes("NotReadableError") || errorMessage.includes("permission")) {
+                    setError('カメラが使用できません。アクセスが拒否されたか、他のアプリがカメラを使用している可能性があります。');
+                } else {
+                    setError(`カメラエラーが発生しました: ${errorMessage}`);
+                }
+                setScanning(false); // エラー時はスキャンを停止
+                // スキャンエラー後もスキャナーを停止し、リソースを解放
+                if (currentScannerInstance && currentScannerInstance.isScanning) {
+                    currentScannerInstance.clear().catch(err => console.error("Failed to clear scanner on error:", err));
                 }
             };
 
-            // スキャナーが現在スキャン中でない場合のみ render() を呼び出す
-            if (!currentScannerInstance.isScanning) {
-                currentScannerInstance.render(onScanSuccess, onScanError)
-                    .catch(err => {
-                        console.error("Failed to start QR scanner (Html5QrcodeScanner.render):", err);
-                        setError('カメラの起動に失敗しました。他のアプリがカメラを使用していないか確認してください。');
+            // ★追加: render() 呼び出しの直前に id="reader" 要素の存在を確認
+            const readerDiv = document.getElementById("reader");
+            console.log("Before render: 'reader' element exists?", !!readerDiv, readerDiv);
+
+            // スキャナーのレンダリング開始
+            try {
+                // ★変更: render() の戻り値をログに出力
+                const renderResult = currentScannerInstance.render(onScanSuccess, onScanError);
+                console.log("Html5QrcodeScanner.render() returned:", renderResult); // ★追加
+
+                if (renderResult && typeof renderResult.then === 'function') { // Promiseかどうかを確認
+                    renderResult.catch(err => {
+                        console.error("Failed to start QR scanner (Html5QrcodeScanner.render) promise rejection:", err);
+                        setError('カメラの起動に失敗しました。ブラウザの権限を確認してください。');
                         setScanning(false);
-                    });
-            } else {
-                console.log("Scanner is already active, not re-rendering.");
-            }
-
-            // クリーンアップ関数（コンポーネントのアンマウント時、または scanning が変更されたときに実行）
-            return () => {
-                // スキャナーがアクティブな場合のみクリアを試みる
-                if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
-                    console.log("Cleanup: Clearing scanner.");
-                    // clear() は Promise を返すので .catch() でエラーハンドリング
-                    html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner during cleanup:", err));
-                }
-            };
-
-        } else { // scanning が false の場合
-            // scanning が false になった場合、スキャナーが起動中であれば停止し、refをクリア
-            if (html5QrcodeScannerRef.current) {
-                if (html5QrcodeScannerRef.current.isScanning) {
-                    console.log("Stopping QR scanner because 'scanning' is false.");
-                    html5QrcodeScannerRef.current.clear().then(() => {
-                        console.log("QR scanner stopped (via scanning=false).");
-                        html5QrcodeScannerRef.current = null; // スキャナー停止後、refをクリア
-                    }).catch(err => {
-                        console.error("Failed to clear scanner when scanning turned off:", err);
+                        // renderがPromiseを返したがrejectされた場合もクリアを試みる
+                        if (currentScannerInstance && currentScannerInstance.isScanning) {
+                            currentScannerInstance.clear().catch(clearErr => console.error("Failed to clear scanner after render rejection:", clearErr));
+                        }
                     });
                 } else {
-                    // スキャナーインスタンスは存在するがスキャン中でない場合（例：起動に失敗した、既にクリアされた）
-                    console.log("QR scanner instance exists but not scanning. Nullifying ref.");
-                    html5QrcodeScannerRef.current = null; // 無駄なインスタンスがあればクリア
+                    // Promiseを返さなかった場合のハンドリング（現在発生しているUndefinedのエラーケース）
+                    console.error("Html5QrcodeScanner.render() did not return a Promise. Returned:", renderResult);
+                    setError('カメラの初期化中に予期せぬエラーが発生しました。');
+                    setScanning(false);
+                    // このケースでは clear() は不要か、安全に呼び出せない可能性がある
                 }
+            } catch (renderCallError) {
+                // render() 呼び出し自体がエラーを投げた場合 (これは通常起こらないが念のため)
+                console.error("Html5QrcodeScanner.render() call itself threw an error:", renderCallError);
+                setError('カメラの起動中に致命的なエラーが発生しました。');
+                setScanning(false);
+            }
+
+            // コンポーネントのアンマウント時、または scanning が false になった時にクリーンアップ
+            return () => {
+                // 修正: useRef に保存されたインスタンスに対して clear() を呼ぶ
+                if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
+                    html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on unmount/stop:", err));
+                }
+                // scanning が false になった時にスキャナーを停止するロジックは、toggleScanner内で setScanning(false) が行われた場合に
+                // この useEffect が再実行され、上の if (!scanning) ブロックで制御される。
+                // あるいは、ここで explicit に clear() を呼ぶことで対応。
+                // html5QrcodeScannerRef.current を使うのが最も安全。
+            };
+        } else {
+            // scanning が false になった場合、もしスキャナーが起動中であれば停止
+            if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
+                html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner when scanning becomes false:", err));
             }
         }
     }, [scanning]); // scanning ステートが変更されたときに実行
-
-    const toggleScanner = async () => {
-        if (!scanning) {
-            setMessage('');
-            setError('');
-            setToolId(''); // 新しいスキャンに備えてIDをクリア
-        }
-        setScanning(prev => !prev);
-    };
-
 
     return (
         <div style={styles.container}>
