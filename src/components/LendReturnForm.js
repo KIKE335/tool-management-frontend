@@ -32,44 +32,16 @@ function LendReturnForm() {
                 } finally {
                     setLoading(false);
                 }
-            } else {
-                setToolData(null);
-                setMessage('');
-                setError('');
             }
         };
 
-        const handler = setTimeout(() => {
-            fetchDetails();
-        }, 300);
-
-        return () => {
-            clearTimeout(handler);
-        };
+        fetchDetails();
     }, [toolId]);
 
-    const handleIdChange = (e) => {
-        setToolId(e.target.value);
-        // 手動入力中はスキャンを停止
-        if (scanning) {
-            setScanning(false);
-        }
-    };
-
-    const handleUpdateStatus = async (newStatus) => {
-        if (!toolId) {
-            setError('工具IDが入力されていません。');
-            return;
-        }
-
-        if (!toolData) {
-            setError('まず工具情報を取得してください。');
-            return;
-        }
-
-        if (toolData.status === newStatus) {
-            setMessage(`この工具は既に「${newStatus}」です。`);
-            setError('');
+    // 工具の状態を更新
+    const handleStatusUpdate = async (newStatus) => {
+        if (!toolData || !toolData.ID) {
+            setError('工具情報がありません。');
             return;
         }
 
@@ -77,227 +49,242 @@ function LendReturnForm() {
         setMessage('');
         setError('');
         try {
-            const updatedData = await updateToolStatus(toolId, newStatus);
-            setToolData(updatedData); // 更新後のデータを反映
-            setMessage(`工具「${updatedData.name}」の状態を「${newStatus}」に更新しました！`);
+            await updateToolStatus(toolData.ID, newStatus);
+            setToolData(prevData => ({ ...prevData, 状態: newStatus }));
+            setMessage(`工具ID: ${toolData.ID} の状態を「${newStatus}」に更新しました。`);
         } catch (err) {
-            setError(`状態の更新に失敗しました: ${err.response ? err.response.data.detail : err.message}`);
+            setError('状態の更新に失敗しました。');
             console.error("Failed to update tool status:", err);
         } finally {
             setLoading(false);
         }
     };
 
-    // ★html5-qrcode のロジックを useEffect で管理
-    useEffect(() => {
-        let currentScannerInstance = html5QrcodeScannerRef.current; // useRefを使ってインスタンスを管理するよう修正
+    // QRコードスキャン成功時のコールバック関数
+    const onScanSuccess = (decodedText, decodedResult) => {
+        console.log(`QR Code Scanned: ${decodedText}`, decodedResult);
+        setToolId(decodedText); // スキャン結果を工具IDとして設定
+        setScanning(false); // スキャンを停止
+        stopScanner(); // スキャナーを停止
+    };
 
-        if (scanning) {
-            const readerElement = document.getElementById("reader");
-            if (!readerElement) {
-                console.error("QR reader element 'reader' not found in DOM. Cannot start scanner.");
-                setError("スキャナーの表示要素が見つかりませんでした。");
-                setScanning(false);
-                return;
-            }
-
-            if (!currentScannerInstance) {
-                try {
-                    currentScannerInstance = new Html5QrcodeScanner(
-                        "reader",
-                        {
-                            fps: 10,
-                            qrbox: { width: 250, height: 250 },
-                            rememberLastUsedCamera: true,
-                            supportedScanFormats: [
-                                Html5QrcodeSupportedFormats.QR_CODE,
-                                Html5QrcodeSupportedFormats.CODE_128,
-                                Html5QrcodeSupportedFormats.CODE_39,
-                            ]
-                        },
-                        /* verbose= */ false
-                    );
-                    html5QrcodeScannerRef.current = currentScannerInstance;
-                    console.log("New Html5QrcodeScanner instance created and stored in ref.");
-                    console.log("Is currentScannerInstance valid?", currentScannerInstance);
-                    console.log("Does currentScannerInstance have render method?", typeof currentScannerInstance.render);
-
-                } catch (instantiationError) {
-                    console.error("Failed to instantiate Html5QrcodeScanner:", instantiationError);
-                    setError("スキャナーの初期化に失敗しました。ブラウザの互換性を確認してください。");
-                    setScanning(false);
-                    return;
-                }
-            }
-
-            // At this point, currentScannerInstance should be non-null if instantiation was successful.
-            if (!currentScannerInstance) {
-                console.error("Html5QrcodeScanner instance is null/undefined after attempted creation.");
-                setError("スキャナーの初期化に失敗しました。");
-                setScanning(false);
-                return;
-            }
-
-            // スキャン成功時のコールバック関数
-            const onScanSuccess = (decodedText, decodedResult) => {
-                console.log(`QR Code Scanned Result: ${decodedText}`, decodedResult);
-                setToolId(decodedText); // スキャン結果をtoolIdにセット
-                setScanning(false); // スキャンを停止
-                setMessage('QRコードをスキャンしました。');
-                setError('');
-                // スキャン成功後、スキャナーを停止し、リソースを解放
-                // html5QrcodeScanner.clear() の代わりに currentScannerInstance.clear() を使う
-                if (currentScannerInstance && currentScannerInstance.isScanning) {
-                    currentScannerInstance.clear().catch(err => console.error("Failed to clear scanner on success:", err));
-                }
-            };
-
-            // スキャンエラー時のコールバック関数 (詳細ログを再有効化)
-            const onScanError = (errorMessage) => {
-                console.error(`QR Code Scan Error: ${errorMessage}`); // ★変更: console.error に変更して必ずログに出す
-                // エラータイプによってはユーザーに通知することも可能
-                if (errorMessage.includes("NotReadableError") || errorMessage.includes("permission")) {
-                    setError('カメラが使用できません。アクセスが拒否されたか、他のアプリがカメラを使用している可能性があります。');
-                } else {
-                    setError(`カメラエラーが発生しました: ${errorMessage}`);
-                }
-                setScanning(false); // エラー時はスキャンを停止
-                // スキャンエラー後もスキャナーを停止し、リソースを解放
-                if (currentScannerInstance && currentScannerInstance.isScanning) {
-                    currentScannerInstance.clear().catch(err => console.error("Failed to clear scanner on error:", err));
-                }
-            };
-
-            // ★追加: render() 呼び出しの直前に id="reader" 要素の存在を確認
-            const readerDiv = document.getElementById("reader");
-            console.log("Before render: 'reader' element exists?", !!readerDiv, readerDiv);
-
-            // スキャナーのレンダリング開始
-            try {
-                // ★変更: render() の戻り値をログに出力
-                const renderResult = currentScannerInstance.render(onScanSuccess, onScanError);
-                console.log("Html5QrcodeScanner.render() returned:", renderResult); // ★追加
-
-                if (renderResult && typeof renderResult.then === 'function') { // Promiseかどうかを確認
-                    renderResult.catch(err => {
-                        console.error("Failed to start QR scanner (Html5QrcodeScanner.render) promise rejection:", err);
-                        setError('カメラの起動に失敗しました。ブラウザの権限を確認してください。');
-                        setScanning(false);
-                        // renderがPromiseを返したがrejectされた場合もクリアを試みる
-                        if (currentScannerInstance && currentScannerInstance.isScanning) {
-                            currentScannerInstance.clear().catch(clearErr => console.error("Failed to clear scanner after render rejection:", clearErr));
-                        }
-                    });
-                } else {
-                    // Promiseを返さなかった場合のハンドリング（現在発生しているUndefinedのエラーケース）
-                    console.error("Html5QrcodeScanner.render() did not return a Promise. Returned:", renderResult);
-                    setError('カメラの初期化中に予期せぬエラーが発生しました。');
-                    setScanning(false);
-                    // このケースでは clear() は不要か、安全に呼び出せない可能性がある
-                }
-            } catch (renderCallError) {
-                // render() 呼び出し自体がエラーを投げた場合 (これは通常起こらないが念のため)
-                console.error("Html5QrcodeScanner.render() call itself threw an error:", renderCallError);
-                setError('カメラの起動中に致命的なエラーが発生しました。');
-                setScanning(false);
-            }
-
-            // コンポーネントのアンマウント時、または scanning が false になった時にクリーンアップ
-            return () => {
-                // 修正: useRef に保存されたインスタンスに対して clear() を呼ぶ
-                if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
-                    html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner on unmount/stop:", err));
-                }
-                // scanning が false になった時にスキャナーを停止するロジックは、toggleScanner内で setScanning(false) が行われた場合に
-                // この useEffect が再実行され、上の if (!scanning) ブロックで制御される。
-                // あるいは、ここで explicit に clear() を呼ぶことで対応。
-                // html5QrcodeScannerRef.current を使うのが最も安全。
-            };
+    // QRコードスキャンエラー時のコールバック関数
+    const onScanError = (errorMessage) => {
+        console.error(`QR Code Scan Error: ${errorMessage}`);
+        // エラータイプによってはユーザーに通知することも可能
+        if (errorMessage.includes("NotReadableError") || errorMessage.includes("permission")) {
+            setError('カメラが使用できません。アクセスが拒否されたか、他のアプリがカメラを使用している可能性があります。');
         } else {
-            // scanning が false になった場合、もしスキャナーが起動中であれば停止
-            if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
-                html5QrcodeScannerRef.current.clear().catch(err => console.error("Failed to clear scanner when scanning becomes false:", err));
+            setError(`カメラエラーが発生しました: ${errorMessage}`);
+        }
+        setScanning(false); // エラー時はスキャンを停止
+        // スキャンエラー後もスキャナーを停止し、リソースを解放
+        if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
+            // clear()の呼び出し直前にログを追加し、何が返されるか確認
+            console.log("LendReturnForm.js:170 Attempting to clear scanner on error. currentScannerInstance.isScanning:", html5QrcodeScannerRef.current.isScanning);
+            const clearResult = html5QrcodeScannerRef.current.clear();
+            console.log("LendReturnForm.js:172 html5QrcodeScannerRef.current.clear() returned:", clearResult);
+
+            if (clearResult && typeof clearResult.then === 'function') {
+                clearResult.catch(err => {
+                    console.error("LendReturnForm.js:176 Failed to clear scanner on error:", err);
+                    // clearも失敗した場合、追加のエラーを設定することも検討
+                });
+            } else {
+                console.error("LendReturnForm.js:180 html5QrcodeScannerRef.current.clear() did not return a Promise. Returned:", clearResult);
             }
         }
-    }, [scanning]); // scanning ステートが変更されたときに実行
+    };
+
+
+    // スキャナーを開始する関数
+    const startScanner = async () => {
+        setError('');
+        setMessage('');
+        setScanning(true);
+
+        const config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            rememberLastUsedCamera: true,
+            // supportedScanFormats: [Html5QrcodeSupportedFormats.QR_CODE] // 特定のフォーマットに限定する場合
+        };
+
+        // 'reader' エレメントが存在するか確認
+        const readerElement = document.getElementById('reader');
+        console.log("LendReturnForm.js:207 Before render: 'reader' element exists?", !!readerElement, readerElement);
+        if (!readerElement) {
+            setError("カメラの表示領域が見つかりません。ページの読み込みに問題がある可能性があります。");
+            setScanning(false);
+            return;
+        }
+
+        try {
+            if (!html5QrcodeScannerRef.current) {
+                const scanner = new Html5QrcodeScanner(
+                    "reader",
+                    config,
+                    /* verbose= */ false
+                );
+                html5QrcodeScannerRef.current = scanner;
+                console.log("LendReturnForm.js:216 New Html5QrcodeScanner instance created and stored in ref.", html5QrcodeScannerRef.current);
+                console.log("LendReturnForm.js:217 Is currentScannerInstance valid?", html5QrcodeScannerRef.current);
+                console.log("LendReturnForm.js:218 Does currentScannerInstance have render method?", typeof html5QrcodeScannerRef.current.render === 'function' ? 'function' : typeof html5QrcodeScannerRef.current.render);
+            } else {
+                console.log("LendReturnForm.js:220 Reusing existing Html5QrcodeScanner instance.");
+                // Ensure it's not already scanning if reusing
+                if (html5QrcodeScannerRef.current.isScanning) {
+                    console.log("LendReturnForm.js:222 Scanner is already active, attempting to clear before re-render.");
+                    await html5QrcodeScannerRef.current.clear().catch(err => {
+                        console.error("LendReturnForm.js:224 Failed to clear existing scanner instance:", err);
+                    });
+                }
+            }
+
+            const renderResult = html5QrcodeScannerRef.current.render(onScanSuccess, onScanError);
+            console.log("LendReturnForm.js:227 Html5QrcodeScanner.render() returned:", renderResult);
+
+            if (renderResult && typeof renderResult.then === 'function') {
+                // render()がPromiseを返す場合のみ.catch()を呼び出す
+                renderResult.catch(err => {
+                    console.error("LendReturnForm.js:231 Failed to start QR scanner (Html5QrcodeScanner.render) promise rejection:", err);
+                    setError('QRスキャナーの起動中にエラーが発生しました。');
+                    setScanning(false);
+                });
+            } else {
+                // render()がPromiseを返さない場合 (undefinedなど)
+                console.error("LendReturnForm.js:237 Html5QrcodeScanner.render() did not return a Promise. Returned:", renderResult);
+                setError('カメラの初期化中に予期せぬエラーが発生しました。');
+                setScanning(false);
+            }
+
+        } catch (renderCallError) {
+            console.error("LendReturnForm.js:245 Error calling Html5QrcodeScanner.render directly:", renderCallError);
+            setError(`カメラの起動に失敗しました: ${renderCallError.message || '不明なエラー'}`);
+            setScanning(false);
+        }
+    };
+
+
+    // スキャナーを停止する関数
+    const stopScanner = async () => {
+        if (html5QrcodeScannerRef.current && html5QrcodeScannerRef.current.isScanning) {
+            setLoading(true); // 停止処理中もローディング表示
+            try {
+                await html5QrcodeScannerRef.current.stop();
+                console.log("LendReturnForm.js:258 Scanner stopped successfully.");
+            } catch (err) {
+                console.error("LendReturnForm.js:260 Failed to stop scanner:", err);
+                //setError('スキャナーの停止に失敗しました。');
+            } finally {
+                setScanning(false);
+                setLoading(false);
+                html5QrcodeScannerRef.current = null; // インスタンスをリセット
+            }
+        } else if (html5QrcodeScannerRef.current) {
+            // スキャン中ではないがインスタンスは存在する可能性があるため、クリアを試みる
+            try {
+                await html5QrcodeScannerRef.current.clear();
+                console.log("LendReturnForm.js:271 Scanner cleared successfully.");
+            } catch (err) {
+                console.error("LendReturnForm.js:273 Failed to clear scanner (not scanning):", err);
+            } finally {
+                setScanning(false);
+                setLoading(false);
+                html5QrcodeScannerRef.current = null;
+            }
+        }
+    };
+
+
+    // コンポーネントがアンマウントされる際にスキャナーを停止
+    useEffect(() => {
+        return () => {
+            console.log("LendReturnForm.js:287 Component unmounting. Stopping scanner if active.");
+            stopScanner();
+        };
+    }, []);
+
+    // 「QRコードをスキャン」ボタンクリックハンドラ
+    const handleScanQrCode = () => {
+        if (!scanning) {
+            startScanner();
+        } else {
+            stopScanner();
+        }
+    };
+
 
     return (
         <div style={styles.container}>
-            <h2>工具の貸し出し・返却</h2>
-
+            <h2>工具貸出/返却</h2>
             <div style={styles.scannerToggle}>
-                <button onClick={toggleScanner} style={styles.scannerButton}>
-                    {scanning ? 'スキャナーを停止' : 'QRコードをスキャン'}
+                <button onClick={handleScanQrCode} style={styles.scannerButton}>
+                    {scanning ? 'スキャン停止' : 'QRコードをスキャン'}
                 </button>
             </div>
 
             {scanning && (
-                <div style={styles.qrReaderContainer}>
-                    {/* QRリーダーを表示する要素。html5-qrcodeはここに映像をレンダリングします */}
-                    <div id="reader" style={styles.qrReaderVideoDiv}></div>
-                    <p style={styles.scanningText}>カメラでQRコードを読み取ってください...</p>
+                <div id="reader" style={styles.qrReaderContainer}>
+                    {/* QRスキャナーがここにレンダリングされます */}
                 </div>
             )}
 
-            {!scanning && (
-                <div style={styles.inputGroup}>
-                    <label htmlFor="toolIdInput" style={styles.label}>工具ID (手動入力)</label>
+            {loading && <p>読み込み中...</p>}
+            {error && <p style={styles.errorText}>エラー: {error}</p>}
+            {message && <p style={styles.messageText}>{message}</p>}
+
+            <div style={styles.formSection}>
+                <label style={styles.label}>
+                    工具ID:
                     <input
                         type="text"
-                        id="toolIdInput"
                         value={toolId}
-                        onChange={handleIdChange}
-                        placeholder="ここに工具IDを入力してください"
+                        onChange={(e) => setToolId(e.target.value)}
                         style={styles.input}
-                        autoFocus
+                        disabled={scanning} // スキャン中は入力無効
                     />
-                </div>
-            )}
-            {scanning && toolId && <p style={styles.scannedIdText}>スキャンされたID: <strong>{toolId}</strong></p>}
-
-
-            {loading && <p style={styles.loading}>データを取得中...</p>}
-            {error && <p style={styles.error}>{error}</p>}
-            {message && !error && <p style={styles.success}>{message}</p>}
+                </label>
+                <button onClick={() => setToolId('')} disabled={scanning} style={styles.clearButton}>クリア</button>
+            </div>
 
             {toolData && (
                 <div style={styles.toolDetails}>
                     <h3>工具情報</h3>
-                    <p><strong>名称:</strong> {toolData.name}</p>
-                    <p><strong>型番品番:</strong> {toolData.modelNumber}</p>
-                    <p><strong>種類:</strong> {toolData.type}</p>
-                    <p><strong>保管場所:</strong> {toolData.storageLocation}</p>
-                    <p><strong>現在の状態:</strong> <span style={toolData.status === '貸出中' ? styles.statusLent : styles.statusAvailable}>{toolData.status}</span></p>
-                    <div style={styles.buttonGroup}>
-                        <button
-                            onClick={() => handleUpdateStatus('貸出中')}
-                            disabled={loading || toolData.status === '貸出中'}
-                            style={{ ...styles.button, ...styles.lendButton }}
-                        >
-                            貸出中にする
-                        </button>
-                        <button
-                            onClick={() => handleUpdateStatus('在庫')}
-                            disabled={loading || toolData.status === '在庫'}
-                            style={{ ...styles.button, ...styles.returnButton }}
-                        >
-                            在庫にする
-                        </button>
-                    </div>
-                    {toolData.qr_code_base64 && (
-                        <div style={styles.qrCodeContainer}>
-                            <h4>QRコード (参照用)</h4>
-                            <img src={toolData.qr_code_base64} alt="QR Code" style={styles.qrCodeImage} />
-                            <p style={styles.qrCodeText}>この工具のQRコード</p>
+                    <p><strong>名称:</strong> {toolData.名称}</p>
+                    <p><strong>型番/品番:</strong> {toolData['型番品番']}</p>
+                    <p><strong>種類:</strong> {toolData.種類}</p>
+                    <p><strong>保管場所:</strong> {toolData.保管場所}</p>
+                    <p><strong>状態:</strong> {toolData.状態}</p>
+                    <p><strong>推奨交換時期:</strong> {toolData.推奨交換時期}</p>
+                    <p><strong>備考:</strong> {toolData.備考}</p>
+                    {toolData.画像URL && (
+                        <div>
+                            <strong>画像:</strong><br />
+                            <img src={toolData.画像URL} alt={toolData.名称} style={styles.toolImage} />
                         </div>
                     )}
+
+                    <div style={styles.buttonGroup}>
+                        {toolData.状態 === '在庫' && (
+                            <button onClick={() => handleStatusUpdate('貸出中')} style={styles.lendButton}>貸出</button>
+                        )}
+                        {toolData.状態 === '貸出中' && (
+                            <button onClick={() => handleStatusUpdate('在庫')} style={styles.returnButton}>返却</button>
+                        )}
+                        {toolData.状態 === '故障' && (
+                            <button onClick={() => handleStatusUpdate('在庫')} style={styles.repairButton}>修理完了→在庫</button>
+                        )}
+                        {toolData.状態 !== '故障' && (
+                            <button onClick={() => handleStatusUpdate('故障')} style={styles.breakdownButton}>故障</button>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
     );
 }
 
-// styles オブジェクトの最後に追加または修正
 const styles = {
     container: {
         padding: '20px',
@@ -313,97 +300,104 @@ const styles = {
         color: '#333',
         marginBottom: '20px',
     },
-    inputGroup: {
-        marginBottom: '15px',
+    formSection: {
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
     },
     label: {
         display: 'block',
-        marginBottom: '5px',
+        marginBottom: '8px',
         fontWeight: 'bold',
         color: '#555',
+        flexGrow: 1,
     },
     input: {
-        width: 'calc(100% - 20px)',
+        width: 'calc(100% - 100px)', // ボタンの幅を考慮
         padding: '10px',
         border: '1px solid #ccc',
         borderRadius: '4px',
         fontSize: '16px',
+        marginTop: '5px',
     },
-    loading: {
-        color: '#007bff',
-        textAlign: 'center',
-    },
-    error: {
-        color: 'red',
-        textAlign: 'center',
-        fontWeight: 'bold',
-    },
-    success: {
-        color: 'green',
-        textAlign: 'center',
-        fontWeight: 'bold',
+    clearButton: {
+        padding: '10px 15px',
+        backgroundColor: '#6c757d',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '16px',
+        whiteSpace: 'nowrap',
     },
     toolDetails: {
         marginTop: '20px',
-        paddingTop: '15px',
+        paddingTop: '20px',
         borderTop: '1px solid #eee',
     },
     h3: {
-        color: '#444',
-        marginBottom: '10px',
+        color: '#007bff',
+        marginBottom: '15px',
     },
     p: {
-        marginBottom: '5px',
-        lineHeight: '1.5',
+        marginBottom: '8px',
+        lineHeight: '1.6',
     },
-    statusLent: {
-        fontWeight: 'bold',
-        color: 'orange',
-    },
-    statusAvailable: {
-        fontWeight: 'bold',
-        color: 'green',
+    toolImage: {
+        maxWidth: '100%',
+        height: 'auto',
+        marginTop: '10px',
+        border: '1px solid #eee',
+        borderRadius: '4px',
     },
     buttonGroup: {
+        marginTop: '20px',
         display: 'flex',
         gap: '10px',
-        marginTop: '20px',
         justifyContent: 'center',
     },
-    button: {
+    baseButton: {
         padding: '10px 20px',
         fontSize: '16px',
+        color: 'white',
+        border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
-        border: 'none',
-        color: '#fff',
-        fontWeight: 'bold',
-        transition: 'background-color 0.2s',
+        transition: 'background-color 0.3s ease',
     },
     lendButton: {
-        backgroundColor: '#ffc107', // 貸出中を表す色
-        '&:hover': {
-            backgroundColor: '#e0a800',
-        },
-        '&:disabled': {
-            backgroundColor: '#ffe08a',
-            cursor: 'not-allowed',
-        },
+        backgroundColor: '#28a745', // Green
+        ...this.baseButton,
     },
     returnButton: {
-        backgroundColor: '#28a745', // 在庫を表す色
-        '&:hover': {
-            backgroundColor: '#218838',
-        },
-        '&:disabled': {
-            backgroundColor: '#90ee90',
-            cursor: 'not-allowed',
-        },
+        backgroundColor: '#007bff', // Blue
+        ...this.baseButton,
     },
-    qrCodeContainer: {
+    breakdownButton: {
+        backgroundColor: '#dc3545', // Red
+        ...this.baseButton,
+    },
+    repairButton: {
+        backgroundColor: '#ffc107', // Yellow-ish
+        color: '#333', // Dark text for contrast
+        ...this.baseButton,
+    },
+    messageText: {
+        color: 'green',
+        fontWeight: 'bold',
+        marginTop: '10px',
         textAlign: 'center',
+    },
+    errorText: {
+        color: 'red',
+        fontWeight: 'bold',
+        marginTop: '10px',
+        textAlign: 'center',
+    },
+    qrCodeDisplay: {
         marginTop: '20px',
-        padding: '10px',
+        padding: '15px',
         border: '1px dashed #ccc',
         borderRadius: '8px',
         backgroundColor: '#f9f9f9',
@@ -447,26 +441,13 @@ const styles = {
         position: 'relative',
         padding: '10px' // html5-qrcode の描画スペースを確保
     },
-    // html5-qrcode が描画する div のスタイル
     qrReaderVideoDiv: {
         width: '100%',
         minHeight: '200px', // 少なくともこれくらいの高さがあると良い
         display: 'flex', // 内部要素を中央寄せするため
-        justifyContent: 'center', // 内部要素を水平中央寄せ
-        alignItems: 'center', // 内部要素を垂直中央寄せ
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    scanningText: {
-        textAlign: 'center',
-        color: '#666',
-        marginTop: '10px',
-    },
-    scannedIdText: {
-        textAlign: 'center',
-        marginTop: '10px',
-        fontSize: '1.1em',
-        fontWeight: 'bold',
-        color: '#333',
-    }
 };
 
 export default LendReturnForm;
