@@ -176,7 +176,7 @@ function LendReturnForm() {
 
     return (
         <div style={styles.container}>
-            <h2>工具貸出/返却</h2>
+            <h2>工具貸出/返却 ver001</h2>
             <div style={styles.scannerToggle}>
                 <button onClick={handleScanQrCode} style={styles.scannerButton}>
                     {scanning ? 'スキャン停止' : 'QRコードをスキャン'}
