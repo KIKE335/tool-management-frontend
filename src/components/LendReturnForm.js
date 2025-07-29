@@ -429,6 +429,7 @@ const styles = {
         width: '100%',
         height: '300px', // 固定の高さを設定して、コンテンツが確実に見えるように
         backgroundColor: '#eee', // 映像が全くない場合に背景色を表示してデバッグしやすく
+        display: 'block'
     },
 };
 
