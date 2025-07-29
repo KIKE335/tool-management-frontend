@@ -115,7 +115,7 @@ function LendReturnForm() {
                 const scanner = new Html5QrcodeScanner(
                     "reader",
                     config,
-                    /* verbose= */ false
+                    /* verbose= */ true
                 );
                 html5QrcodeScannerRef.current = scanner;
                 console.log("LendReturnForm.js:useEffect[scanning]: New Html5QrcodeScanner instance created.");
