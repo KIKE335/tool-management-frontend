@@ -1,7 +1,6 @@
 // src/components/LendReturnForm.js
 import React, { useState, useEffect, useRef } from 'react';
 import { getToolById, updateToolStatus } from '../api';
-// Html5QrcodeScanner の代わりに Html5Qrcode をインポート
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode'; 
 
 function LendReturnForm() {
@@ -13,7 +12,6 @@ function LendReturnForm() {
     const [scanning, setScanning] = useState(false); // QRコードスキャン中かどうか
 
     // QRコードスキャナーのインスタンスを保持するためのRef
-    // Html5QrcodeScanner の代わりに Html5Qrcode のインスタンスを保持
     const html5QrCodeRef = useRef(null); 
 
     // 工具IDが入力されたら、自動で情報をフェッチ
@@ -82,7 +80,7 @@ function LendReturnForm() {
     // QRコードスキャンエラー時のコールバック関数
     const onScanError = async (errorMessage) => {
         // エラーメッセージが頻繁に出るため、ここでは詳細ログは控えめに
-        // console.error(`QR Code Scan Error: ${errorMessage}`); 
+        console.log(`LendReturnForm.js:onScanError: ${errorMessage}`); 
 
         // NotReadableError または permission 関連のエラーはユーザーに通知
         if (errorMessage.includes("NotReadableError") || errorMessage.includes("permission")) {
@@ -132,8 +130,6 @@ function LendReturnForm() {
             const qrCodeConfig = {
                 fps: 10, // 1秒あたりのフレーム数
                 qrbox: { width: 250, height: 250 }, // QRコードの検出エリア
-                // rememberLastUsedCamera: false, // Html5QrcodeScanner のオプションなので削除
-                // disableFlip: false, // Html5QrcodeScanner のオプションなので削除
                 formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
             };
 
@@ -145,7 +141,16 @@ function LendReturnForm() {
                 onScanError
             ).then(() => {
                 console.log("LendReturnForm.js:useEffect[scanning]: Html5Qrcode camera started successfully.");
-                // スキャナー開始時の状態管理などがあればここに追加
+                // カメラが開始された後に、動画要素が存在するか確認
+                setTimeout(() => {
+                    const videoElement = readerElement.querySelector('video');
+                    if (videoElement) {
+                        console.log("LendReturnForm.js:useEffect[scanning]: Video element found in #reader:", videoElement);
+                        console.log("Video dimensions:", videoElement.videoWidth, "x", videoElement.videoHeight);
+                    } else {
+                        console.warn("LendReturnForm.js:useEffect[scanning]: No video element found in #reader after camera start.");
+                    }
+                }, 1000); // 1秒後にチェック
             }).catch(err => {
                 console.error("LendReturnForm.js:useEffect[scanning]: Camera start error:", err);
                 setError(`カメラ起動エラー: ${err.message}`); // エラーメッセージを表示
@@ -174,7 +179,7 @@ function LendReturnForm() {
                 });
             }
         };
-    }, [scanning, toolId]); // toolIdが変更されたらカメラを再起動する可能性があるため依存に追加
+    }, [scanning]); // toolIdの変更でカメラを再起動する必要がないため、依存配列から削除
 
     // スキャン開始/停止ボタンのハンドラ
     const toggleScanner = () => {
@@ -201,10 +206,8 @@ function LendReturnForm() {
 
             {scanning && (
                 <div style={styles.qrReaderContainer}>
+                    {/* #reader は html5-qrcode がビデオやキャンバスを挿入する場所 */}
                     <div id="reader" style={styles.qrReaderVideoDiv}></div>
-                    {/* Html5QrcodeScanner が生成する要素は不要になるが、
-                        Html5Qrcode が直接 #reader 内に video 要素を生成するため、
-                        このdivは残しておく */}
                     {error && <p style={styles.errorText}>{error}</p>}
                 </div>
             )}
@@ -263,7 +266,7 @@ function LendReturnForm() {
     );
 }
 
-// スタイル定義 (これは既存のLendReturnForm.jsから変更なし)
+// スタイル定義
 const styles = {
     container: {
         fontFamily: 'Arial, sans-serif',
@@ -337,14 +340,14 @@ const styles = {
     },
     lendButton: {
         backgroundColor: '#28a745',
-        '&:hover': {
+        '&:hover': { // Reactのスタイルオブジェクトでは直接適用されないが、残しておく
             backgroundColor: '#218838',
         },
     },
     returnButton: {
         backgroundColor: '#ffc107',
         color: '#333',
-        '&:hover': {
+        '&:hover': { // Reactのスタイルオブジェクトでは直接適用されないが、残しておく
             backgroundColor: '#e0a800',
         },
     },
@@ -380,7 +383,7 @@ const styles = {
         borderRadius: '5px',
         cursor: 'pointer',
         transition: 'background-color 0.2s',
-        '&:hover': {
+        '&:hover': { // Reactのスタイルオブジェクトでは直接適用されないが、残しておく
             backgroundColor: '#0056b3',
         },
     },
@@ -390,17 +393,20 @@ const styles = {
         margin: '0 auto 20px',
         border: '1px solid #ccc',
         borderRadius: '8px',
-        overflow: 'hidden',
+        // overflow: 'hidden', // 削除: これが原因で映像が見えなくなる可能性
         position: 'relative',
-        padding: '10px' // html5-qrcode の描画スペースを確保
+        padding: '0px' // html5-qrcode の描画スペースを確保、余分なパディングを削除
     },
     // html5-qrcode が描画する div のスタイル
     qrReaderVideoDiv: {
         width: '100%',
-        minHeight: '200px', // 少なくともこれくらいの高さがあると良い
-        display: 'flex', // 内部要素を中央寄せするため
-        justifyContent: 'center',
-        alignItems: 'center',
+        // minHeight: '200px', // minHeightは維持
+        height: '300px', // 固定の高さを設定して、コンテンツが確実に見えるように
+        // display: 'flex', // 削除: html5-qrcodeが直接video/canvasを挿入するため不要
+        // justifyContent: 'center', // 削除
+        // alignItems: 'center', // 削除
+        // position: 'relative', // 削除
+        backgroundColor: '#eee', // 映像が全くない場合に背景色を表示してデバッグしやすく
     },
 };
 
