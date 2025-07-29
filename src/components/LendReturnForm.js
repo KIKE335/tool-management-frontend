@@ -285,6 +285,17 @@ function LendReturnForm() {
     );
 }
 
+// ★修正: baseButtonStylesをstylesオブジェクトの外で定義
+const baseButtonStyles = {
+    padding: '10px 20px',
+    fontSize: '16px',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+};
+
 const styles = {
     container: {
         padding: '20px',
@@ -357,31 +368,23 @@ const styles = {
         gap: '10px',
         justifyContent: 'center',
     },
-    baseButton: {
-        padding: '10px 20px',
-        fontSize: '16px',
-        color: 'white',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        transition: 'background-color 0.3s ease',
-    },
+    // baseButtonの定義はbaseButtonStylesに移動
     lendButton: {
         backgroundColor: '#28a745', // Green
-        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
+        ...baseButtonStyles, // ★修正: baseButtonStylesを使用
     },
     returnButton: {
         backgroundColor: '#007bff', // Blue
-        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
+        ...baseButtonStyles, // ★修正: baseButtonStylesを使用
     },
     breakdownButton: {
         backgroundColor: '#dc3545', // Red
-        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
+        ...baseButtonStyles, // ★修正: baseButtonStylesを使用
     },
     repairButton: {
         backgroundColor: '#ffc107', // Yellow-ish
         color: '#333', // Dark text for contrast
-        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
+        ...baseButtonStyles, // ★修正: baseButtonStylesを使用
     },
     messageText: {
         color: 'green',
