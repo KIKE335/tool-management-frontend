@@ -100,7 +100,12 @@ function LendReturnForm() {
             const config = {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
-                rememberLastUsedCamera: true,
+                // ★ここを修正/追加★
+                // enumerateDevicesで取得したカメラのIDをここに直接入力してください
+                cameraId: "aa6eb4a8129c02f2f52a90e71e8f9d9b19acd1d03e0dfc19a9548d966918107b",
+                rememberLastUsedCamera: false, // 明示的に指定するので、これはfalseにするか削除してください
+                disableFlip: false, // 必要であれば残す
+                // supportedScanFormats: [Html5QrcodeSupportedFormats.QR_CODE] はコメントアウトのままでOKです。
             };
 
             const readerElement = document.getElementById('reader');
