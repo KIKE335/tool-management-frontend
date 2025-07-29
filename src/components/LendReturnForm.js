@@ -1,4 +1,4 @@
-// src/components/LendReturnForm.js 
+// src/components/LendReturnForm.js
 import React, { useState, useEffect, useRef } from 'react';
 import { getToolById, updateToolStatus } from '../api';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
@@ -368,20 +368,20 @@ const styles = {
     },
     lendButton: {
         backgroundColor: '#28a745', // Green
-        ...this.baseButton,
+        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
     },
     returnButton: {
         backgroundColor: '#007bff', // Blue
-        ...this.baseButton,
+        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
     },
     breakdownButton: {
         backgroundColor: '#dc3545', // Red
-        ...this.baseButton,
+        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
     },
     repairButton: {
         backgroundColor: '#ffc107', // Yellow-ish
         color: '#333', // Dark text for contrast
-        ...this.baseButton,
+        ...styles.baseButton, // ★修正: this.baseButton から styles.baseButton に変更
     },
     messageText: {
         color: 'green',
