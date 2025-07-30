@@ -24,6 +24,7 @@ function LendReturnForm() {
                 try {
                     const data = await getToolById(toolId);
                     setToolData(data);
+                    console.log("実際に取得された工具データ:", data); 
                     setMessage('工具情報を取得しました。');
                 } catch (err) {
                     setToolData(null);
