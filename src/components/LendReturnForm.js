@@ -200,7 +200,6 @@ function LendReturnForm() {
         }
     };
 
-
     return (
         <div style={styles.container}>
             <h1 style={styles.heading}>工具貸出・返却システム</h1>
@@ -220,15 +219,61 @@ function LendReturnForm() {
                     {error && <p style={styles.errorText}>{error}</p>}
                 </div>
             ) : (
-                <>
-                    {/* スキャン中でないときにスキャン結果や手動入力などを表示 */}
-                    {toolId && ( // スキャン中でないときに結果を表示
+                // スキャン中でない場合、かつtoolIdがある場合は、スキャン結果と工具情報エリアを表示
+                // toolIdが入力された場合やスキャンされた場合に、即座に工具情報部分を表示する
+                toolId ? (
+                    <>
                         <div style={styles.qrCodeDisplay}>
                             <h3>スキャン結果</h3>
                             <p style={styles.qrCodeText}>スキャンされたID: {toolId}</p>
                         </div>
-                    )}
+                        {/* ここに工具情報表示部分が続く */}
+                        {loading && <p style={styles.loadingText}>ロード中...</p>}
+                        {error && <p style={styles.errorText}>{error}</p>}
+                        {message && <p style={styles.messageText}>{message}</p>}
 
+                        {toolData && ( // toolDataがある場合のみ表示
+                            <div style={styles.toolDetails}>
+                                <h2>工具情報</h2>
+                                <p><strong>ID:</strong> {toolData.ID}</p>
+                                <p><strong>名称:</strong> {toolData.名称}</p>
+                                <p><strong>状態:</strong> {toolData.状態}</p>
+
+                                <div style={styles.buttonGroup}>
+                                    {toolData.状態 === '貸出可能' && (
+                                        <button
+                                            onClick={() => handleStatusUpdate('貸出中')}
+                                            style={{ ...styles.actionButton, ...styles.lendButton }}
+                                        >
+                                            貸出
+                                        </button>
+                                    )}
+                                    {toolData.状態 === '貸出中' && (
+                                        <button
+                                            onClick={() => handleStatusUpdate('貸出可能')}
+                                            style={{ ...styles.actionButton, ...styles.returnButton }}
+                                        >
+                                            返却
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {/* 手動入力フィールドも引き続き表示 */}
+                        <div style={styles.inputSection}>
+                            <label htmlFor="toolIdInput" style={styles.label}>工具IDを手動で入力:</label>
+                            <input
+                                type="text"
+                                id="toolIdInput"
+                                value={toolId}
+                                onChange={(e) => setToolId(e.target.value)}
+                                style={styles.input}
+                                placeholder="工具IDを入力してください"
+                            />
+                        </div>
+                    </>
+                ) : (
+                    // スキャン中でなく、toolIdもまだ設定されていない場合（初期状態など）
                     <div style={styles.inputSection}>
                         <label htmlFor="toolIdInput" style={styles.label}>工具IDを手動で入力:</label>
                         <input
@@ -240,39 +285,15 @@ function LendReturnForm() {
                             placeholder="工具IDを入力してください"
                         />
                     </div>
-                </>
+                )
             )}
-
-            {loading && <p style={styles.loadingText}>ロード中...</p>}
-            {error && <p style={styles.errorText}>{error}</p>}
-            {message && <p style={styles.messageText}>{message}</p>}
-
-            {toolData && (
-                <div style={styles.toolDetails}>
-                    <h2>工具情報</h2>
-                    <p><strong>ID:</strong> {toolData.ID}</p>
-                    <p><strong>名称:</strong> {toolData.名称}</p>
-                    <p><strong>状態:</strong> {toolData.状態}</p>
-
-                    <div style={styles.buttonGroup}>
-                        {toolData.状態 === '貸出可能' && (
-                            <button
-                                onClick={() => handleStatusUpdate('貸出中')}
-                                style={{ ...styles.actionButton, ...styles.lendButton }}
-                            >
-                                貸出
-                            </button>
-                        )}
-                        {toolData.状態 === '貸出中' && (
-                            <button
-                                onClick={() => handleStatusUpdate('貸出可能')}
-                                style={{ ...styles.actionButton, ...styles.returnButton }}
-                            >
-                                返却
-                            </button>
-                        )}
-                    </div>
-                </div>
+            {/* 全体メッセージは常に表示 */}
+            {!scanning && !toolId && (
+                <>
+                    {loading && <p style={styles.loadingText}>ロード中...</p>}
+                    {error && <p style={styles.errorText}>{error}</p>}
+                    {message && <p style={styles.messageText}>{message}</p>}
+                </>
             )}
         </div>
     );
