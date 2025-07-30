@@ -66,7 +66,7 @@ function LendReturnForm() {
 
     // QRコードスキャン成功時のコールバック関数
     const onScanSuccess = async (decodedText, decodedResult) => {
-        console.log(`LendReturnForm.js:onScanSuccess: QR Code Scanned: ${decodedText}`, decodedResult); [cite: 1]
+        console.log(`LendReturnForm.js:onScanSuccess: QR Code Scanned: ${decodedText}`, decodedResult);
         setToolId(decodedText); // スキャン結果を工具IDとして設定
         setScanning(false); // スキャンを停止（useEffectで停止処理が走る）
     };
@@ -142,13 +142,13 @@ function LendReturnForm() {
 
         // クリーンアップ関数
         return () => {
-            console.log("LendReturnForm.js:useEffect[scanning] return cleanup: Checking scanner state for unmount."); [cite: 2]
+            console.log("LendReturnForm.js:useEffect[scanning] return cleanup: Checking scanner state for unmount.");
             if (html5QrCodeRef.current) {
                 // isScanningを確認してから停止を試みる
                 if (html5QrCodeRef.current.isScanning) {
-                    console.log("LendReturnForm.js:useEffect[scanning] cleanup: Stopping scanner."); [cite: 2]
+                    console.log("LendReturnForm.js:useEffect[scanning] cleanup: Stopping scanner.");
                     html5QrCodeRef.current.stop().then(() => {
-                        console.log("LendReturnForm.js:useEffect[scanning] cleanup: Scanner stopped."); [cite: 2]
+                        console.log("LendReturnForm.js:useEffect[scanning] cleanup: Scanner stopped.");
                         // 停止が完了したらクリアを試みる
                         html5QrCodeRef.current.clear().then(() => {
                             console.log("LendReturnForm.js:useEffect[scanning] cleanup: Scanner cleared after stop.");
