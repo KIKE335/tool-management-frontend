@@ -221,10 +221,12 @@ function LendReturnForm() {
                         {error && <p style={styles.errorText}>{error}</p>}
                         {message && <p style={styles.messageText}>{message}</p>}
 
-                        {toolData && ( // toolDataがある場合のみ表示
+                        {/* toolDataが存在する場合にのみ工具情報を表示し、ボタンを表示 */}
+                        {toolData && ( 
                             <div style={styles.toolDetails}>
                                 <h2>工具情報</h2>
-                                <p><strong>ID:</strong> {toolData.ID}</p>
+                                [cite_start]{/* 工具IDの表示を追加 [cite: 1] */}
+                                <p><strong>ID:</strong> {toolData.ID}</p> 
                                 <p><strong>名称:</strong> {toolData.名称}</p>
                                 <p><strong>状態:</strong> {toolData.状態}</p>
 
