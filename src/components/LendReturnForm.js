@@ -45,7 +45,7 @@ function LendReturnForm() {
 
     // 工具の状態を更新
     const handleStatusUpdate = async (newStatus) => {
-        if (!toolData || !toolData.ID) {
+        if (!toolData || !toolData["ID (QRコード)"]) {
             setError('工具情報がありません。');
             return;
         }
@@ -54,9 +54,9 @@ function LendReturnForm() {
         setMessage('');
         setError('');
         try {
-            await updateToolStatus(toolData.ID, newStatus);
+            await updateToolStatus(toolData["ID (QRコード)"], newStatus);
             setToolData(prevData => ({ ...prevData, 状態: newStatus }));
-            setMessage(`工具ID: ${toolData.ID} の状態を「${newStatus}」に更新しました。`);
+            setMessage(`工具ID: ${toolData["ID (QRコード)"]} の状態を「${newStatus}」に更新しました。`);
         } catch (err) {
             setError('状態の更新に失敗しました。');
             console.error("Failed to update tool status:", err);
