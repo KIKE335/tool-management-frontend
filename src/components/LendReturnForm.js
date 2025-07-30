@@ -46,6 +46,7 @@ function LendReturnForm() {
     // 工具の状態を更新
     const handleStatusUpdate = async (newStatus) => {
         if (!toolData || !toolData["ID (QRコード)"]) {
+            console.log("ID出力してみる:", toolData["ID (QRコード)"]); 
             setError('工具情報がありません。');
             return;
         }
