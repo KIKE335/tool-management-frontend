@@ -235,7 +235,7 @@ function LendReturnForm() {
                                 <p><strong>備考:</strong> {toolData.備考}</p>
 
                                 <div style={styles.buttonGroup}>
-                                    {toolData.状態 === '貸出可能' && (
+                                    {toolData.状態 === '在庫' && (
                                         <button
                                             onClick={() => handleStatusUpdate('貸出中')}
                                             style={{ ...styles.actionButton, ...styles.lendButton }}
@@ -245,7 +245,7 @@ function LendReturnForm() {
                                     )}
                                     {toolData.状態 === '貸出中' && (
                                         <button
-                                            onClick={() => handleStatusUpdate('貸出可能')}
+                                            onClick={() => handleStatusUpdate('在庫')}
                                             style={{ ...styles.actionButton, ...styles.returnButton }}
                                         >
                                             返却
