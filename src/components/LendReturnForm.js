@@ -66,7 +66,7 @@ function LendReturnForm() {
 
     // QRコードスキャン成功時のコールバック関数
     const onScanSuccess = async (decodedText, decodedResult) => {
-        console.log(`QR Code Scanned: ${decodedText}`, decodedResult);
+        console.log(`LendReturnForm.js:onScanSuccess: QR Code Scanned: ${decodedText}`, decodedResult); [cite: 1]
         setToolId(decodedText); // スキャン結果を工具IDとして設定
         setScanning(false); // スキャンを停止（useEffectで停止処理が走る）
     };
@@ -77,15 +77,14 @@ function LendReturnForm() {
 
         if (errorMessage.includes("NotReadableError") || errorMessage.includes("permission")) {
             setError('カメラが使用できません。アクセスが拒否されたか、他のアプリがカメラを使用している可能性があります。');
+            setScanning(false); // カメラエラーの場合はスキャンを停止
         } else if (errorMessage.includes("No MultiFormat Readers") || errorMessage.includes("NotFoundException")) {
             // QRコードが検出されない場合など、頻繁に発生するエラーなのでユーザーには表示しない
             // console.log("LendReturnForm.js:onScanError: No QR code detected in frame."); // デバッグ用にログは残す
         } else {
             setError(`カメラエラーが発生しました: ${errorMessage}`);
+            setScanning(false); // その他のエラーでもスキャンを停止
         }
-        // スキャンエラーの場合でも、カメラは起動し続けている可能性があるため scanning は変更しない
-        // QRコードが検出されないNotFoundExceptionが頻繁に発生するため、setErrorをしない
-        // setScanning(false); // エラー発生時もスキャンを停止したい場合はコメントを外す
     };
 
     // QRスキャナーの起動/停止ロジックをuseEffectで管理
@@ -102,6 +101,7 @@ function LendReturnForm() {
             }
 
             // 既存のインスタンスをクリアしてから新しいインスタンスを作成する
+            // Html5Qrcodeインスタンスは毎回新しいIDで作成することを推奨
             if (html5QrCodeRef.current) {
                 html5QrCodeRef.current.clear().then(() => {
                     console.log("LendReturnForm.js:useEffect[scanning]: Existing Html5Qrcode instance cleared.");
@@ -130,18 +130,6 @@ function LendReturnForm() {
                     );
                     console.log("LendReturnForm.js:useEffect[scanning]: Html5Qrcode camera started successfully.");
 
-                    // カメラが開始された後に、動画要素が存在するか確認（デバッグ用、前回問題解決済みのためコメントアウト可）
-                    // const videoElement = readerElement.querySelector('video');
-                    // if (videoElement) {
-                    //     console.log("LendReturnForm.js:useEffect[scanning]: Video element found in #reader:", videoElement);
-                    //     console.log("Video dimensions:", videoElement.videoWidth, "x", videoElement.videoHeight);
-                    // } else {
-                    //     console.warn("LendReturnForm.js:useEffect[scanning]: No video element found in #reader after camera start.");
-                    //     console.log("LendReturnForm.js:useEffect[scanning]: Children of #reader:", readerElement.innerHTML);
-                    //     setError("カメラ映像の表示に失敗しました。");
-                    //     setScanning(false);
-                    // }
-
                 } catch (err) {
                     console.error("LendReturnForm.js:useEffect[scanning]: Camera start error:", err);
                     setError(`カメラ起動エラー: ${err.message}`);
@@ -150,41 +138,41 @@ function LendReturnForm() {
             };
 
             startScanner();
-
-        } else { // scanningがfalseになったらスキャナーを停止
-            if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-                console.log("LendReturnForm.js:useEffect[scanning] cleanup: Stopping scanner.");
-                html5QrCodeRef.current.stop().then(() => {
-                    console.log("Scanner stopped during cleanup.");
-                }).catch(err => {
-                    console.error("Failed to stop scanner during cleanup:", err);
-                });
-            }
-            // scanningがfalseになったら、必ずクリアも行う (二重実行防止のためisScanningのチェック後)
-            if (html5QrCodeRef.current) {
-                html5QrCodeRef.current.clear().then(() => {
-                    console.log("Html5Qrcode cleared during cleanup (scanning is false).");
-                }).catch(err => {
-                    console.error("Failed to clear Html5Qrcode during cleanup (scanning is false):", err);
-                });
-            }
         }
 
         // クリーンアップ関数
         return () => {
-            console.log("LendReturnForm.js:useEffect[scanning] return cleanup: Checking scanner state for unmount.");
+            console.log("LendReturnForm.js:useEffect[scanning] return cleanup: Checking scanner state for unmount."); [cite: 2]
             if (html5QrCodeRef.current) {
-                // コンポーネントアンマウント時にはisScanningの確認なくstop/clearを試みる
-                html5QrCodeRef.current.stop().then(() => {
-                    console.log("Scanner stopped on component unmount.");
-                }).catch(err => {
-                    console.error("Failed to stop scanner on component unmount:", err);
-                });
-                html5QrCodeRef.current.clear().then(() => {
-                    console.log("Html5Qrcode cleared on component unmount.");
-                }).catch(err => {
-                    console.error("Failed to clear Html5Qrcode on component unmount:", err);
-                });
+                // isScanningを確認してから停止を試みる
+                if (html5QrCodeRef.current.isScanning) {
+                    console.log("LendReturnForm.js:useEffect[scanning] cleanup: Stopping scanner."); [cite: 2]
+                    html5QrCodeRef.current.stop().then(() => {
+                        console.log("LendReturnForm.js:useEffect[scanning] cleanup: Scanner stopped."); [cite: 2]
+                        // 停止が完了したらクリアを試みる
+                        html5QrCodeRef.current.clear().then(() => {
+                            console.log("LendReturnForm.js:useEffect[scanning] cleanup: Scanner cleared after stop.");
+                        }).catch(err => {
+                            console.error("LendReturnForm.js:useEffect[scanning] cleanup: Failed to clear scanner after stop:", err);
+                        });
+                    }).catch(err => {
+                        console.error("LendReturnForm.js:useEffect[scanning] cleanup: Failed to stop scanner:", err);
+                        // 停止に失敗した場合でも、念のためクリアを試みる
+                        html5QrCodeRef.current.clear().then(() => {
+                            console.log("LendReturnForm.js:useEffect[scanning] cleanup: Scanner cleared after stop attempt failed.");
+                        }).catch(clearErr => {
+                            console.error("LendReturnForm.js:useEffect[scanning] cleanup: Failed to clear scanner after stop attempt failed:", clearErr);
+                        });
+                    });
+                } else {
+                    // スキャン中ではないがインスタンスが存在する場合、クリアを試みる
+                    html5QrCodeRef.current.clear().then(() => {
+                        console.log("LendReturnForm.js:useEffect[scanning] cleanup: Scanner cleared (not scanning).");
+                    }).catch(err => {
+                        console.error("LendReturnForm.js:useEffect[scanning] cleanup: Failed to clear scanner (not scanning):", err);
+                    });
+                }
+                html5QrCodeRef.current = null; // 参照をクリア
             }
         };
     }, [scanning]); // scanningのみを依存配列に含める
@@ -199,6 +187,7 @@ function LendReturnForm() {
             setError('');
         }
     };
+
 
     return (
         <div style={styles.container}>
