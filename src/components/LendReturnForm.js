@@ -226,7 +226,7 @@ function LendReturnForm() {
                             <div style={styles.toolDetails}>
                                 <h2>工具情報</h2>
                                 [cite_start]{/* 工具IDの表示を追加 [cite: 1] */}
-                                <p><strong>ID:</strong> {toolData.ID}</p> 
+                                <p><strong>ID:</strong> {toolData.toolId}</p> 
                                 <p><strong>名称:</strong> {toolData.名称}</p>
                                 <p><strong>状態:</strong> {toolData.状態}</p>
 
