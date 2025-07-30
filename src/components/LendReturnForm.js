@@ -56,6 +56,7 @@ function LendReturnForm() {
         setError('');
         try {
             await updateToolStatus(toolData["ID (QRコード)"], newStatus);
+            console.log("ID出力してみる:", toolData["ID (QRコード)"]); 
             setToolData(prevData => ({ ...prevData, 状態: newStatus }));
             setMessage(`工具ID: ${toolData["ID (QRコード)"]} の状態を「${newStatus}」に更新しました。`);
         } catch (err) {
